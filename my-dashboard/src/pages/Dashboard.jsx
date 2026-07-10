@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   AreaChart,
   Area,
@@ -12,6 +13,7 @@ import {
 } from 'recharts'
 import { HiShoppingCart, HiUsers, HiCurrencyDollar, HiTrendingUp } from 'react-icons/hi'
 import StatCard from '../components/StatCard'
+import { supabase } from '../lib/supabase'
 
 const revenueData = [
   { month: 'Jan', revenue: 6500, expenses: 3200 },
@@ -33,14 +35,6 @@ const trafficData = [
   { day: 'Sun', visitors: 275 },
 ]
 
-const recentTransactions = [
-  { id: '#TXN-001', name: 'Apple MacBook Pro', date: 'Jul 8, 2026', amount: '$2,399', status: 'Completed' },
-  { id: '#TXN-002', name: 'Microsoft Surface Pro', date: 'Jul 7, 2026', amount: '$1,799', status: 'Pending' },
-  { id: '#TXN-003', name: 'iPad Air', date: 'Jul 6, 2026', amount: '$749', status: 'Completed' },
-  { id: '#TXN-004', name: 'Sony WH-1000XM5', date: 'Jul 5, 2026', amount: '$349', status: 'Cancelled' },
-  { id: '#TXN-005', name: 'Samsung 4K Monitor', date: 'Jul 4, 2026', amount: '$899', status: 'Completed' },
-]
-
 const statusColors = {
   Completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
   Pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
@@ -55,6 +49,22 @@ const stats = [
 ]
 
 export default function Dashboard() {
+  const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    supabase
+      .from('transactions')
+      .select('*')
+      .order('date', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) setError(error.message)
+        else setTransactions(data ?? [])
+        setLoading(false)
+      })
+  }, [])
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
@@ -110,32 +120,40 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Transactions</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-              <tr>
-                <th className="px-6 py-3">Transaction ID</th>
-                <th className="px-6 py-3">Product</th>
-                <th className="px-6 py-3">Date</th>
-                <th className="px-6 py-3">Amount</th>
-                <th className="px-6 py-3">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentTransactions.map((tx) => (
-                <tr key={tx.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                  <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{tx.id}</td>
-                  <td className="px-6 py-4">{tx.name}</td>
-                  <td className="px-6 py-4">{tx.date}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{tx.amount}</td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${statusColors[tx.status]}`}>
-                      {tx.status}
-                    </span>
-                  </td>
+          {loading ? (
+            <div className="p-6 text-center text-gray-500 dark:text-gray-400">Loading transactions...</div>
+          ) : error ? (
+            <div className="p-6 text-center text-red-500">{error}</div>
+          ) : transactions.length === 0 ? (
+            <div className="p-6 text-center text-gray-500 dark:text-gray-400">No transactions found.</div>
+          ) : (
+            <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                <tr>
+                  <th className="px-6 py-3">Transaction ID</th>
+                  <th className="px-6 py-3">Product</th>
+                  <th className="px-6 py-3">Date</th>
+                  <th className="px-6 py-3">Amount</th>
+                  <th className="px-6 py-3">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {transactions.map((tx) => (
+                  <tr key={tx.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{tx.id}</td>
+                    <td className="px-6 py-4">{tx.name}</td>
+                    <td className="px-6 py-4">{tx.date}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{tx.amount}</td>
+                    <td className="px-6 py-4">
+                      <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${statusColors[tx.status] ?? 'bg-gray-100 text-gray-800'}`}>
+                        {tx.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
